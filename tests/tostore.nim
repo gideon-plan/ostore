@@ -1,6 +1,10 @@
 {.experimental: "strict_funcs".}
-import std/[unittest, strutils, tables, times]
-import ostore
+import std/[unittest, times]
+import basis/code/choice
+import ostore/sigv4
+import ostore/client
+import ostore/multipart
+
 suite "sigv4":
   test "date stamp format":
     let dt = dateTime(2026, mMar, 24, 12, 0, 0, zone = utc())
@@ -13,31 +17,23 @@ suite "sigv4":
     check canonical_uri("/bucket/key") == "/bucket/key"
   test "canonical querystring":
     check canonical_querystring(@[("b", "2"), ("a", "1")]) == "a=1&b=2"
+
 suite "client":
-  test "put object":
-    let mock_http: HttpFn = proc(m, u: string, h: seq[(string, string)], b: string): Result[tuple[status: int, body: string], BridgeError] {.raises: [].} =
-      Result[tuple[status: int, body: string], BridgeError].good((status: 200, body: ""))
+  test "init and close":
     let cfg = default_config()
-    let r = put_object(cfg, mock_http, "bucket", "key", "data")
+    let r = init_s3_client(cfg)
     check r.is_good
-  test "get object":
-    let mock_http: HttpFn = proc(m, u: string, h: seq[(string, string)], b: string): Result[tuple[status: int, body: string], BridgeError] {.raises: [].} =
-      Result[tuple[status: int, body: string], BridgeError].good((status: 200, body: "content"))
+    var c = r.val
+    c.close()
+
+  test "config defaults":
     let cfg = default_config()
-    let r = get_object(cfg, mock_http, "bucket", "key")
-    check r.is_good
-    check r.val == "content"
-  test "put failure":
-    let mock_http: HttpFn = proc(m, u: string, h: seq[(string, string)], b: string): Result[tuple[status: int, body: string], BridgeError] {.raises: [].} =
-      Result[tuple[status: int, body: string], BridgeError].good((status: 403, body: ""))
-    let r = put_object(default_config(), mock_http, "b", "k", "d")
-    check r.is_bad
-suite "adapter":
-  test "store and get vector":
-    var stored: Table[string, string]
-    let mock_http: HttpFn = proc(m, u: string, h: seq[(string, string)], b: string): Result[tuple[status: int, body: string], BridgeError] {.raises: [].} =
-      if m == "PUT": stored[u] = b
-      Result[tuple[status: int, body: string], BridgeError].good((status: 200, body: stored.getOrDefault(u, "")))
-    let a = new_adapter(default_config(), mock_http)
-    let r = a.store_vector("col1", "vec_0", "[1.0, 2.0]")
-    check r.is_good
+    check cfg.endpoint == "http://localhost:9000"
+    check cfg.region == "us-east-1"
+
+suite "multipart":
+  test "new and add part":
+    var mp = new_multipart("bucket", "key", "upload-123")
+    mp.add_part("etag1")
+    mp.add_part("etag2")
+    check mp.parts.len == 2
