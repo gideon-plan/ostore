@@ -7,12 +7,12 @@ import client
 
 proc create_bucket*(c: S3Client, name: string): Choice[bool] =
   let url = c.config.endpoint & "/" & name
-  let r = c.http.request(HttpRequest(url: url, meth: hmPut, follow_redirects: false))
+  let r = c.http.request(HttpRequest(url: url, meth: HttpMethod.Put, follow_redirects: false))
   if r.is_bad: return bad[bool](r.err)
   good(true)
 
 proc delete_bucket*(c: S3Client, name: string): Choice[bool] =
   let url = c.config.endpoint & "/" & name
-  let r = c.http.request(HttpRequest(url: url, meth: hmDelete, follow_redirects: false))
+  let r = c.http.request(HttpRequest(url: url, meth: HttpMethod.Delete, follow_redirects: false))
   if r.is_bad: return bad[bool](r.err)
   good(true)

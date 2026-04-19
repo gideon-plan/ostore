@@ -39,13 +39,13 @@ proc close*(c: var S3Client) =
 
 proc to_method(s: string): HttpMethod =
   case s
-  of "GET": hmGet
-  of "PUT": hmPut
-  of "DELETE": hmDelete
-  of "POST": hmPost
-  of "HEAD": hmHead
-  of "PATCH": hmPatch
-  else: hmGet
+  of "GET": HttpMethod.Get
+  of "PUT": HttpMethod.Put
+  of "DELETE": HttpMethod.Delete
+  of "POST": HttpMethod.Post
+  of "HEAD": HttpMethod.Head
+  of "PATCH": HttpMethod.Patch
+  else: HttpMethod.Get
 
 proc s3_request(c: S3Client, meth_name, url: string,
                 headers: seq[(string, string)] = @[],
